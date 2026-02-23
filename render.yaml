@@ -41,4 +41,4 @@ services:
         sync: false
         description: "Sender email address (e.g., THE VVIP <concierge@thevvip.com>)"
       - key: NODE_VERSION
-        value: 20.0.0
+        value: 22.12.0
