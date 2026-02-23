@@ -399,13 +399,15 @@ function buildRejectionEmail(userName) {
 </html>`;
 }
 
-app.use(express.static(__dirname));
+const distPath = path.join(__dirname, 'dist');
+const staticPath = fs.existsSync(distPath) ? distPath : __dirname;
+app.use(express.static(staticPath));
 
 app.get('*', (req, res) => {
   if (req.url.startsWith('/api/')) {
     return res.status(404).json({ error: 'API not found' });
   }
-  const indexPath = path.join(__dirname, 'index.html');
+  const indexPath = path.join(staticPath, 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
