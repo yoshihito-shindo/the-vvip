@@ -41,6 +41,7 @@ export interface UserProfile {
   stripeSubscriptionId?: string;
   verificationImageUrl?: string;
   pendingDowngrade?: string;
+  paymentFailed?: boolean;
   is_admin?: boolean;
   is_ai_generated?: boolean;
 }
@@ -103,6 +104,7 @@ export function dbRowToProfile(row: any): UserProfile {
     stripeSubscriptionId: row.stripe_subscription_id || undefined,
     verificationImageUrl: row.verification_image_url || undefined,
     pendingDowngrade: row.pending_downgrade || undefined,
+    paymentFailed: row.payment_failed || false,
     is_admin: row.is_admin || false,
     is_ai_generated: row.is_ai_generated || false,
   };

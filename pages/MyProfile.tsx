@@ -119,6 +119,12 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
                 <div className="text-3xl font-serif text-gold-400 mb-1">{getPlanName(user.subscription)}</div>
                 <div className="text-[9px] text-gray-400 uppercase tracking-widest">ランク: {user.status}</div>
               </div>
+              {user.paymentFailed && (
+                <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-3 text-center">
+                  <p className="text-[11px] text-red-400 font-bold">お支払いに失敗しました</p>
+                  <p className="text-[9px] text-red-400/70 mt-1">お支払い方法をご確認ください</p>
+                </div>
+              )}
               <button
                 onClick={() => navigate('/subscription')}
                 className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black text-gold-200 uppercase tracking-widest hover:bg-gold-500 hover:text-black transition-all"

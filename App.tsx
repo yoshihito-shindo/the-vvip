@@ -161,6 +161,11 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-luxe-black text-white font-sans">
+      {meProfile.paymentFailed && (
+        <div className="bg-red-600 text-white text-center py-3 px-4 text-sm font-bold z-[9000] relative">
+          お支払いに失敗しました。プロフィール画面からお支払い方法をご確認ください。
+        </div>
+      )}
       {!selectedProfile && <Navigation hasNewFootprints={footprints.some(f => f.isNew)} hasNewLikes={receivedLikes.some(l => l.isNew)} />}
 
       <GlobalMatchOverlay me={meProfile} matchedUser={justMatchedUser} onClose={() => setJustMatchedUser(null)} onGoToChat={() => { setJustMatchedUser(null); window.location.hash = '#/messages'; }} />
