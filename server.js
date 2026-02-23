@@ -21,15 +21,10 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 const EMAIL_FROM = process.env.EMAIL_FROM || 'THE VVIP <onboarding@resend.dev>';
 
 app.use(cors());
-app.use(express.json());
-
-app.use((req, res, next) => {
-  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
-  next();
-});
 
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_mock';
 const STRIPE_PUB_KEY = process.env.STRIPE_PUBLISHABLE_KEY || '';
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 const stripe = require('stripe')(STRIPE_KEY);
 
 const STRIPE_PRICES = {
@@ -37,6 +32,144 @@ const STRIPE_PRICES = {
   Platinum: process.env.STRIPE_PRICE_PLATINUM || '',
   VVIP: process.env.STRIPE_PRICE_VVIP || '',
 };
+
+// Reverse lookup: priceId → planName
+const PRICE_TO_PLAN = {};
+Object.entries(STRIPE_PRICES).forEach(([plan, priceId]) => {
+  if (priceId) PRICE_TO_PLAN[priceId] = plan;
+});
+
+// ============================================
+// Stripe Webhook (must be before express.json())
+// ============================================
+app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  let event;
+
+  if (STRIPE_WEBHOOK_SECRET) {
+    const sig = req.headers['stripe-signature'];
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+      console.error('[WEBHOOK] Signature verification failed:', err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+  } else {
+    // No secret configured — parse raw body (dev/test only)
+    try {
+      event = JSON.parse(req.body.toString());
+    } catch {
+      return res.status(400).send('Invalid JSON');
+    }
+    console.warn('[WEBHOOK] No STRIPE_WEBHOOK_SECRET set — signature not verified');
+  }
+
+  console.log(`[WEBHOOK] Received: ${event.type}`);
+
+  try {
+    switch (event.type) {
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object;
+        const subscriptionId = invoice.subscription;
+        if (!subscriptionId || !supabaseAdmin) break;
+
+        // Find user by stripe_subscription_id
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('id, subscription, pending_downgrade')
+          .eq('stripe_subscription_id', subscriptionId)
+          .single();
+
+        if (!profile) {
+          console.log('[WEBHOOK] No profile found for subscription:', subscriptionId);
+          break;
+        }
+
+        if (profile.pending_downgrade) {
+          // Execute pending downgrade
+          const newPriceId = STRIPE_PRICES[profile.pending_downgrade];
+          if (newPriceId) {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId);
+            const itemId = sub.items.data[0]?.id;
+            if (itemId) {
+              await stripe.subscriptions.update(subscriptionId, {
+                items: [{ id: itemId, price: newPriceId }],
+                proration_behavior: 'none',
+              });
+            }
+          }
+
+          const now = new Date();
+          const threeMonthsLater = new Date(now);
+          threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
+
+          await supabaseAdmin.from('profiles').update({
+            subscription: profile.pending_downgrade,
+            pending_downgrade: null,
+            subscription_started_at: now.toISOString(),
+            subscription_until: threeMonthsLater.toISOString(),
+            payment_failed: false,
+          }).eq('id', profile.id);
+
+          console.log(`[WEBHOOK] Downgrade executed: ${profile.id} → ${profile.pending_downgrade}`);
+        } else {
+          // Extend subscription period
+          const now = new Date();
+          const threeMonthsLater = new Date(now);
+          threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
+
+          await supabaseAdmin.from('profiles').update({
+            subscription_until: threeMonthsLater.toISOString(),
+            payment_failed: false,
+          }).eq('id', profile.id);
+
+          console.log(`[WEBHOOK] Subscription renewed: ${profile.id}, until ${threeMonthsLater.toISOString()}`);
+        }
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        const subscriptionId = invoice.subscription;
+        if (!subscriptionId || !supabaseAdmin) break;
+
+        await supabaseAdmin.from('profiles').update({
+          payment_failed: true,
+        }).eq('stripe_subscription_id', subscriptionId);
+
+        console.log(`[WEBHOOK] Payment failed for subscription: ${subscriptionId}`);
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object;
+        if (!supabaseAdmin) break;
+
+        await supabaseAdmin.from('profiles').update({
+          subscription: 'Free',
+          stripe_subscription_id: null,
+          subscription_started_at: null,
+          subscription_until: null,
+          pending_downgrade: null,
+          payment_failed: false,
+        }).eq('stripe_subscription_id', subscription.id);
+
+        console.log(`[WEBHOOK] Subscription deleted: ${subscription.id}`);
+        break;
+      }
+    }
+  } catch (err) {
+    console.error(`[WEBHOOK] Error handling ${event.type}:`, err.message);
+  }
+
+  res.json({ received: true });
+});
+
+app.use(express.json());
+
+app.use((req, res, next) => {
+  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
+  next();
+});
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({
