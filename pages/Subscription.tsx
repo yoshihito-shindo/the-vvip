@@ -4,6 +4,7 @@ import { SubscriptionPlan } from '../types';
 import { Icons } from '../components/Icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { paymentService } from '../services/paymentService';
+import { apiFetch } from '../services/api';
 
 declare global {
   interface Window {
@@ -146,9 +147,8 @@ const Subscription: React.FC<SubscriptionProps> = ({ currentPlan, myUserId, onSe
     setPaymentStep('PROCESSING');
 
     try {
-      const res = await fetch('/api/change-subscription', {
+      const res = await apiFetch('/api/change-subscription', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: myUserId, newPlanId: selectedPlanId }),
       });
       const data = await res.json();
@@ -181,9 +181,8 @@ const Subscription: React.FC<SubscriptionProps> = ({ currentPlan, myUserId, onSe
 
       const activePlan = plans.find(p => p.id === selectedPlanId);
 
-      const response = await fetch('/api/create-subscription', {
+      const response = await apiFetch('/api/create-subscription', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planId: selectedPlanId, paymentMethodId: paymentMethod.id, userId: myUserId }),
       });
 

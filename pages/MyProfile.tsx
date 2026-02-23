@@ -4,6 +4,7 @@ import { UserProfile, SubscriptionPlan } from '../types';
 import { Icons } from '../components/Icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { apiFetch } from '../services/api';
 
 interface MyProfileProps {
   user: UserProfile;
@@ -30,7 +31,7 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
 
   useEffect(() => {
     if (user.subscription !== SubscriptionPlan.Free) {
-      fetch(`/api/subscription-status/${user.id}`)
+      apiFetch(`/api/subscription-status/${user.id}`)
         .then(r => r.json())
         .then(data => setSubStatus(data))
         .catch(() => {});
@@ -41,9 +42,8 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
     setCancelLoading(true);
     setCancelMessage('');
     try {
-      const res = await fetch('/api/cancel-subscription', {
+      const res = await apiFetch('/api/cancel-subscription', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id }),
       });
       const data = await res.json();
@@ -81,9 +81,8 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
   const handleDeleteAccount = async () => {
     setDeleteLoading(true);
     try {
-      const res = await fetch('/api/delete-account', {
+      const res = await apiFetch('/api/delete-account', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id }),
       });
       const data = await res.json();

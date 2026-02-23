@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { UserProfile, Gender, dbRowToProfile, profileToDbRow } from '../types';
+import { apiFetch } from './api';
 
 export const profileService = {
   async getProfiles(options?: { gender?: Gender; excludeIds?: string[]; limit?: number }): Promise<UserProfile[]> {
@@ -70,9 +71,8 @@ export const profileService = {
   },
 
   async approveUser(userId: string): Promise<void> {
-    const response = await fetch('/api/admin/approve-user', {
+    const response = await apiFetch('/api/admin/approve-user', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, action: 'approve' }),
     });
     const data = await response.json();
@@ -85,9 +85,8 @@ export const profileService = {
   },
 
   async rejectUser(userId: string): Promise<void> {
-    const response = await fetch('/api/admin/approve-user', {
+    const response = await apiFetch('/api/admin/approve-user', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, action: 'reject' }),
     });
     const data = await response.json();

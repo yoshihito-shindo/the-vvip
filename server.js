@@ -6,21 +6,106 @@ const path = require('path');
 const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 
 // Supabase Admin client (server-side only, uses service role key)
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
 const supabaseAdmin = supabaseUrl && supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey)
+  : null;
+
+// Supabase client for JWT verification (uses anon key)
+const supabaseAuth = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
 // Resend email client
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'THE VVIP <onboarding@resend.dev>';
 
-app.use(cors());
+// CORS: 本番は自ドメインのみ許可
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['https://app.thevvip.jp', 'https://the-vvip.onrender.com'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (server-to-server, mobile apps, curl)
+    if (!origin || ALLOWED_ORIGINS.includes(origin) || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      callback(null, true); // Log but allow for now during rollout
+      console.warn(`[CORS] Request from unauthorized origin: ${origin}`);
+    }
+  },
+  credentials: true,
+}));
+
+// Rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: { error: 'リクエスト回数の上限に達しました。しばらくお待ちください。' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: 'リクエスト回数の上限に達しました。しばらくお待ちください。' },
+});
+app.use('/api/', apiLimiter);
+
+// ============================================
+// Auth Middleware
+// ============================================
+async function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: '認証が必要です。' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  if (!supabaseAuth) {
+    return res.status(500).json({ error: 'Auth service not configured' });
+  }
+
+  try {
+    const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
+    if (error || !user) {
+      return res.status(401).json({ error: '認証トークンが無効です。' });
+    }
+    req.authUser = user;
+    next();
+  } catch {
+    return res.status(401).json({ error: '認証に失敗しました。' });
+  }
+}
+
+async function requireAdmin(req, res, next) {
+  if (!req.authUser || !supabaseAdmin) {
+    return res.status(403).json({ error: '権限がありません。' });
+  }
+
+  try {
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', req.authUser.id)
+      .single();
+
+    if (!data?.is_admin) {
+      return res.status(403).json({ error: '管理者権限が必要です。' });
+    }
+    next();
+  } catch {
+    return res.status(403).json({ error: '権限の確認に失敗しました。' });
+  }
+}
 
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_mock';
 const STRIPE_PUB_KEY = process.env.STRIPE_PUBLISHABLE_KEY || '';
@@ -321,7 +406,7 @@ app.get('/api/config', (req, res) => {
 // ============================================
 // Subscription: Create Stripe Subscription
 // ============================================
-app.post('/api/create-subscription', async (req, res) => {
+app.post('/api/create-subscription', requireAuth, strictLimiter, async (req, res) => {
   const { planId, paymentMethodId, userId } = req.body;
 
   if (STRIPE_KEY === 'sk_test_mock') {
@@ -396,7 +481,7 @@ app.post('/api/create-subscription', async (req, res) => {
 // ============================================
 // Subscription: Get subscription status
 // ============================================
-app.get('/api/subscription-status/:userId', async (req, res) => {
+app.get('/api/subscription-status/:userId', requireAuth, async (req, res) => {
   const { userId } = req.params;
 
   if (!supabaseAdmin) {
@@ -439,7 +524,7 @@ app.get('/api/subscription-status/:userId', async (req, res) => {
 // ============================================
 const PLAN_TIER = { Gold: 1, Platinum: 2, VVIP: 3 };
 
-app.post('/api/change-subscription', async (req, res) => {
+app.post('/api/change-subscription', requireAuth, strictLimiter, async (req, res) => {
   const { userId, newPlanId } = req.body;
 
   if (!supabaseAdmin) {
@@ -520,7 +605,7 @@ app.post('/api/change-subscription', async (req, res) => {
 // ============================================
 // Subscription: Cancel (with 3-month check)
 // ============================================
-app.post('/api/cancel-subscription', async (req, res) => {
+app.post('/api/cancel-subscription', requireAuth, strictLimiter, async (req, res) => {
   const { userId } = req.body;
 
   if (!supabaseAdmin) {
@@ -581,7 +666,7 @@ app.post('/api/cancel-subscription', async (req, res) => {
 // ============================================
 // Admin: Billing dashboard data
 // ============================================
-app.get('/api/admin/billing', async (req, res) => {
+app.get('/api/admin/billing', requireAuth, requireAdmin, async (req, res) => {
   if (!supabaseAdmin) {
     return res.status(500).json({ error: 'Supabase is not configured on server' });
   }
@@ -644,11 +729,16 @@ app.get('/api/admin/billing', async (req, res) => {
 // ============================================
 // Account: Delete account
 // ============================================
-app.post('/api/delete-account', async (req, res) => {
+app.post('/api/delete-account', requireAuth, strictLimiter, async (req, res) => {
   const { userId } = req.body;
 
   if (!supabaseAdmin) {
     return res.status(500).json({ error: 'Supabase is not configured on server' });
+  }
+
+  // Verify the requesting user is the account owner
+  if (req.authUser.id !== userId) {
+    return res.status(403).json({ error: '自分のアカウントのみ削除できます。' });
   }
 
   try {
@@ -691,7 +781,7 @@ app.post('/api/delete-account', async (req, res) => {
 // ============================================
 // Admin: Get signed URL for verification image
 // ============================================
-app.get('/api/admin/verification-image/:userId', async (req, res) => {
+app.get('/api/admin/verification-image/:userId', requireAuth, requireAdmin, async (req, res) => {
   const { userId } = req.params;
 
   if (!supabaseAdmin) {
@@ -737,7 +827,7 @@ app.get('/api/admin/verification-image/:userId', async (req, res) => {
 // ============================================
 // Admin: Approve/Reject user KYC
 // ============================================
-app.post('/api/admin/approve-user', async (req, res) => {
+app.post('/api/admin/approve-user', requireAuth, requireAdmin, async (req, res) => {
   const { userId, action } = req.body;
 
   if (!userId || !['approve', 'reject'].includes(action)) {

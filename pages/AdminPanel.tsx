@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, AccountStatus, SubscriptionPlan } from '../types';
 import { Icons } from '../components/Icons';
+import { apiFetch } from '../services/api';
 
 interface AdminPanelProps {
   allUsers: UserProfile[];
@@ -40,7 +41,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
     setVerificationSignedUrl(null);
     setLoadingVerification(true);
     try {
-      const res = await fetch(`/api/admin/verification-image/${userId}`);
+      const res = await apiFetch(`/api/admin/verification-image/${userId}`);
       if (res.ok) {
         const data = await res.json();
         setVerificationSignedUrl(data.signedUrl);
@@ -99,7 +100,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
   const fetchBilling = async () => {
     setBillingLoading(true);
     try {
-      const res = await fetch('/api/admin/billing');
+      const res = await apiFetch('/api/admin/billing');
       if (res.ok) {
         const data = await res.json();
         setBillingData(data);
