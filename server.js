@@ -317,6 +317,52 @@ app.post('/api/cancel-subscription', async (req, res) => {
 });
 
 // ============================================
+// Admin: Get signed URL for verification image
+// ============================================
+app.get('/api/admin/verification-image/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Supabase is not configured on server' });
+  }
+
+  try {
+    const { data: profile, error } = await supabaseAdmin
+      .from('profiles')
+      .select('verification_image_url')
+      .eq('id', userId)
+      .single();
+
+    if (error) throw error;
+    if (!profile?.verification_image_url) {
+      return res.status(404).json({ error: '身分証画像が見つかりません。' });
+    }
+
+    // Extract storage path from full URL
+    // URL format: https://xxx.supabase.co/storage/v1/object/public/verification-docs/userId/file.jpg
+    const url = profile.verification_image_url;
+    const bucketPath = url.includes('/verification-docs/')
+      ? url.split('/verification-docs/')[1]
+      : null;
+
+    if (!bucketPath) {
+      return res.status(400).json({ error: '画像パスの解析に失敗しました。' });
+    }
+
+    const { data: signedData, error: signError } = await supabaseAdmin.storage
+      .from('verification-docs')
+      .createSignedUrl(bucketPath, 3600); // 1 hour
+
+    if (signError) throw signError;
+
+    res.json({ signedUrl: signedData.signedUrl });
+  } catch (error) {
+    console.error('[VERIFICATION IMAGE ERROR]:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
 // Admin: Approve/Reject user KYC
 // ============================================
 app.post('/api/admin/approve-user', async (req, res) => {

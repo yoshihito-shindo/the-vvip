@@ -18,6 +18,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
   // Stripe Key Management
   const [localPubKey, setLocalPubKey] = useState(localStorage.getItem('DEBUG_STRIPE_PUB_KEY') || '');
   const [saveStatus, setSaveStatus] = useState(false);
+  const [verificationSignedUrl, setVerificationSignedUrl] = useState<string | null>(null);
+  const [loadingVerification, setLoadingVerification] = useState(false);
 
   // サーバー状態
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'online' | 'error'>('idle');
@@ -29,6 +31,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
     .sort((a, b) => (b.verificationImageUrl ? 1 : 0) - (a.verificationImageUrl ? 1 : 0));
 
   const [processing, setProcessing] = useState(false);
+
+  const fetchVerificationImage = async (userId: string) => {
+    setVerificationSignedUrl(null);
+    setLoadingVerification(true);
+    try {
+      const res = await fetch(`/api/admin/verification-image/${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setVerificationSignedUrl(data.signedUrl);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingVerification(false);
+    }
+  };
+
+  const handleSelectUser = (user: UserProfile) => {
+    setSelectedUser(user);
+    if (user.verificationImageUrl) {
+      fetchVerificationImage(user.id);
+    } else {
+      setVerificationSignedUrl(null);
+    }
+  };
 
   const handleStatusChange = async (user: UserProfile, newStatus: AccountStatus) => {
     setProcessing(true);
@@ -106,7 +133,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-4">
                 {pendingUsers.map(user => (
-                  <div key={user.id} onClick={() => setSelectedUser(user)} className={`p-4 rounded-2xl border flex items-center gap-4 cursor-pointer ${selectedUser?.id === user.id ? 'bg-blue-600/10 border-blue-500' : 'bg-luxe-panel border-white/5'}`}>
+                  <div key={user.id} onClick={() => handleSelectUser(user)} className={`p-4 rounded-2xl border flex items-center gap-4 cursor-pointer ${selectedUser?.id === user.id ? 'bg-blue-600/10 border-blue-500' : 'bg-luxe-panel border-white/5'}`}>
                     <img src={user.imageUrls[0]} className="w-12 h-12 rounded-full object-cover" />
                     <div className="flex-1">
                       <span className="font-bold">{user.name}</span>
@@ -133,15 +160,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
                   <div className="space-y-2">
                     <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest">提出された身分証</h4>
                     {selectedUser.verificationImageUrl ? (
-                      <div>
-                        <img
-                          src={selectedUser.verificationImageUrl}
-                          onClick={() => setZoomedImage(selectedUser.verificationImageUrl!)}
-                          style={{ width: '100%', minHeight: '300px', maxHeight: '500px', objectFit: 'contain' }}
-                          className="rounded-xl border border-white/10 bg-black cursor-zoom-in hover:border-blue-500/50 transition-colors"
-                        />
-                        <p className="text-[10px] text-gray-600 mt-1 text-center">クリックで拡大表示</p>
-                      </div>
+                      loadingVerification ? (
+                        <div className="w-full h-40 bg-black/40 rounded-xl border border-white/5 flex items-center justify-center">
+                          <p className="text-gray-500 text-sm animate-pulse">読み込み中...</p>
+                        </div>
+                      ) : verificationSignedUrl ? (
+                        <div>
+                          <img
+                            src={verificationSignedUrl}
+                            onClick={() => setZoomedImage(verificationSignedUrl)}
+                            style={{ width: '100%', minHeight: '300px', maxHeight: '500px', objectFit: 'contain' }}
+                            className="rounded-xl border border-white/10 bg-black cursor-zoom-in hover:border-blue-500/50 transition-colors"
+                          />
+                          <p className="text-[10px] text-gray-600 mt-1 text-center">クリックで拡大表示（署名付きURL・1時間有効）</p>
+                        </div>
+                      ) : (
+                        <div className="w-full h-40 bg-black/40 rounded-xl border border-white/5 flex items-center justify-center">
+                          <p className="text-gray-600 text-sm">画像の取得に失敗しました</p>
+                        </div>
+                      )
                     ) : (
                       <div className="w-full h-40 bg-black/40 rounded-xl border border-white/5 flex items-center justify-center">
                         <p className="text-gray-600 text-sm">身分証が未提出です</p>

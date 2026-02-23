@@ -80,7 +80,7 @@ const AuthPage: React.FC = () => {
 
         // 2. Upload files
         const verificationUrl = await uploadFile(idFile, userId, 'verification-docs', 'id_document');
-        const faceUrl = await uploadFile(faceFile, userId, 'verification-docs', 'face_photo');
+        const faceUrl = await uploadFile(faceFile, userId, 'profile-photos', 'face_photo');
 
         // 3. Create profile
         const { error: profileError } = await supabase.from('profiles').insert({
