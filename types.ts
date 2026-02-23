@@ -40,6 +40,7 @@ export interface UserProfile {
   subscriptionUntil?: number;
   stripeSubscriptionId?: string;
   verificationImageUrl?: string;
+  pendingDowngrade?: string;
   is_admin?: boolean;
   is_ai_generated?: boolean;
 }
@@ -101,6 +102,7 @@ export function dbRowToProfile(row: any): UserProfile {
     subscriptionUntil: row.subscription_until ? new Date(row.subscription_until).getTime() : undefined,
     stripeSubscriptionId: row.stripe_subscription_id || undefined,
     verificationImageUrl: row.verification_image_url || undefined,
+    pendingDowngrade: row.pending_downgrade || undefined,
     is_admin: row.is_admin || false,
     is_ai_generated: row.is_ai_generated || false,
   };
@@ -128,5 +130,6 @@ export function profileToDbRow(profile: Partial<UserProfile>): Record<string, an
   if (profile.subscriptionStartedAt !== undefined) row.subscription_started_at = new Date(profile.subscriptionStartedAt).toISOString();
   if (profile.subscriptionUntil !== undefined) row.subscription_until = new Date(profile.subscriptionUntil).toISOString();
   if (profile.stripeSubscriptionId !== undefined) row.stripe_subscription_id = profile.stripeSubscriptionId;
+  if (profile.pendingDowngrade !== undefined) row.pending_downgrade = profile.pendingDowngrade;
   return row;
 }

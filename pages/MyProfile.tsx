@@ -15,6 +15,7 @@ interface SubStatus {
   remainingDays: number;
   commitmentUntil: string | null;
   startedAt: string | null;
+  pendingDowngrade: string | null;
 }
 
 const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
@@ -122,7 +123,7 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
                 onClick={() => navigate('/subscription')}
                 className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black text-gold-200 uppercase tracking-widest hover:bg-gold-500 hover:text-black transition-all"
               >
-                アップグレード
+                プラン変更
               </button>
 
               {/* Subscription management */}
@@ -144,6 +145,12 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
                   {subStatus.isWithinCommitment && (
                     <div className="bg-gold-500/10 border border-gold-500/20 rounded-lg p-3 text-center">
                       <p className="text-[11px] text-gold-400 font-bold">契約期間中（残り{subStatus.remainingDays}日）</p>
+                    </div>
+                  )}
+
+                  {subStatus.pendingDowngrade && (
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center">
+                      <p className="text-[11px] text-blue-400 font-bold">次回更新時に {subStatus.pendingDowngrade} プランに変更予定</p>
                     </div>
                   )}
 

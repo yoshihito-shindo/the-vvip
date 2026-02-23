@@ -144,7 +144,7 @@ app.get('/api/subscription-status/:userId', async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('profiles')
-      .select('subscription, subscription_started_at, subscription_until, stripe_subscription_id')
+      .select('subscription, subscription_started_at, subscription_until, stripe_subscription_id, pending_downgrade')
       .eq('id', userId)
       .single();
 
@@ -162,11 +162,95 @@ app.get('/api/subscription-status/:userId', async (req, res) => {
       startedAt: data.subscription_started_at,
       commitmentUntil: data.subscription_until,
       stripeSubscriptionId: data.stripe_subscription_id,
+      pendingDowngrade: data.pending_downgrade || null,
       isWithinCommitment,
       remainingDays,
     });
   } catch (error) {
     console.error('[SUBSCRIPTION STATUS ERROR]:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// Subscription: Change plan (upgrade/downgrade)
+// ============================================
+const PLAN_TIER = { Gold: 1, Platinum: 2, VVIP: 3 };
+
+app.post('/api/change-subscription', async (req, res) => {
+  const { userId, newPlanId } = req.body;
+
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Supabase is not configured on server' });
+  }
+  if (STRIPE_KEY === 'sk_test_mock') {
+    return res.status(400).json({ error: 'Stripe Secret Keyが設定されていません。' });
+  }
+
+  const newPriceId = STRIPE_PRICES[newPlanId];
+  if (!newPriceId) {
+    return res.status(400).json({ error: `無効なプラン: ${newPlanId}` });
+  }
+
+  try {
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('subscription, stripe_subscription_id, pending_downgrade')
+      .eq('id', userId)
+      .single();
+
+    if (profileError) throw profileError;
+
+    if (!profile.stripe_subscription_id) {
+      return res.status(400).json({ error: '有効なサブスクリプションがありません。' });
+    }
+
+    const currentTier = PLAN_TIER[profile.subscription] || 0;
+    const newTier = PLAN_TIER[newPlanId] || 0;
+
+    if (currentTier === newTier) {
+      return res.status(400).json({ error: '現在と同じプランです。' });
+    }
+
+    // Get current subscription to find the item ID
+    const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
+    const itemId = subscription.items.data[0]?.id;
+    if (!itemId) {
+      return res.status(400).json({ error: 'サブスクリプション情報の取得に失敗しました。' });
+    }
+
+    if (newTier > currentTier) {
+      // === UPGRADE: immediate with proration ===
+      await stripe.subscriptions.update(profile.stripe_subscription_id, {
+        items: [{ id: itemId, price: newPriceId }],
+        proration_behavior: 'create_prorations',
+        metadata: { ...subscription.metadata, planId: newPlanId },
+      });
+
+      await supabaseAdmin
+        .from('profiles')
+        .update({ subscription: newPlanId, pending_downgrade: null })
+        .eq('id', userId);
+
+      console.log(`[PLAN CHANGE] User ${userId}: ${profile.subscription} → ${newPlanId} (upgrade, immediate)`);
+      res.json({ success: true, type: 'upgrade', message: `${newPlanId}プランにアップグレードしました。差額は日割りで請求されます。` });
+
+    } else {
+      // === DOWNGRADE: at next billing period ===
+      await stripe.subscriptions.update(profile.stripe_subscription_id, {
+        metadata: { ...subscription.metadata, planId: newPlanId, pending_downgrade: newPlanId },
+      });
+
+      await supabaseAdmin
+        .from('profiles')
+        .update({ pending_downgrade: newPlanId })
+        .eq('id', userId);
+
+      console.log(`[PLAN CHANGE] User ${userId}: ${profile.subscription} → ${newPlanId} (downgrade, scheduled)`);
+      res.json({ success: true, type: 'downgrade', message: `次回更新時に${newPlanId}プランに変更されます。` });
+    }
+  } catch (error) {
+    console.error('[CHANGE SUBSCRIPTION ERROR]:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
