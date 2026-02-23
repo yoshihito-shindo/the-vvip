@@ -283,6 +283,12 @@ const AuthPage: React.FC = () => {
             <div className="text-xs text-red-400 bg-red-500/10 p-3 rounded-lg text-center">{error}</div>
           )}
 
+          {mode === 'REGISTER' && (
+            <p className="text-[10px] text-gray-600 text-center leading-relaxed">
+              登録することで、<a href="https://thevvip.jp/terms.html" target="_blank" rel="noopener noreferrer" className="text-gold-400 underline">利用規約</a>および<a href="https://thevvip.jp/privacy.html" target="_blank" rel="noopener noreferrer" className="text-gold-400 underline">プライバシーポリシー</a>に同意したものとみなされます。
+            </p>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -299,6 +305,12 @@ const AuthPage: React.FC = () => {
             >
               {mode === 'LOGIN' ? 'アカウントをお持ちでない方 → 新規登録' : 'アカウントをお持ちの方 → ログイン'}
             </button>
+          </div>
+
+          <div className="text-center text-[9px] text-gray-600 space-x-3">
+            <a href="https://thevvip.jp/terms.html" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">利用規約</a>
+            <span>|</span>
+            <a href="https://thevvip.jp/privacy.html" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">プライバシーポリシー</a>
           </div>
         </form>
       </div>

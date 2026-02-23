@@ -252,12 +252,19 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
             </div>
           </div>
 
-          <div className="pt-12 border-t border-white/5 flex items-center justify-between">
-            {isAdmin && (
-              <button onClick={onAdminMode} className="text-[9px] text-gray-700 uppercase font-black hover:text-gold-500 transition-colors">管理画面</button>
-            )}
-            {!isAdmin && <div />}
-            <button onClick={handleLogout} className="text-[9px] text-red-900 uppercase font-black hover:text-red-500 transition-colors">ログアウト</button>
+          <div className="pt-12 border-t border-white/5 space-y-6">
+            <div className="flex items-center justify-center gap-4 text-[9px] text-gray-600">
+              <a href="https://thevvip.jp/terms.html" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">利用規約</a>
+              <span>|</span>
+              <a href="https://thevvip.jp/privacy.html" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">プライバシーポリシー</a>
+            </div>
+            <div className="flex items-center justify-between">
+              {isAdmin && (
+                <button onClick={onAdminMode} className="text-[9px] text-gray-700 uppercase font-black hover:text-gold-500 transition-colors">管理画面</button>
+              )}
+              {!isAdmin && <div />}
+              <button onClick={handleLogout} className="text-[9px] text-red-900 uppercase font-black hover:text-red-500 transition-colors">ログアウト</button>
+            </div>
           </div>
         </div>
       </div>
