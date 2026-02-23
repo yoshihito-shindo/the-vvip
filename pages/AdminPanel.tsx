@@ -16,9 +16,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [backendUrl, setBackendUrl] = useState<string>(window.location.origin);
   
-  // Stripe Key Management
-  const [localPubKey, setLocalPubKey] = useState(localStorage.getItem('DEBUG_STRIPE_PUB_KEY') || '');
-  const [saveStatus, setSaveStatus] = useState(false);
   const [verificationSignedUrl, setVerificationSignedUrl] = useState<string | null>(null);
   const [loadingVerification, setLoadingVerification] = useState(false);
 
@@ -72,13 +69,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
     } finally {
       setProcessing(false);
     }
-  };
-
-  const saveLocalKeys = () => {
-    localStorage.setItem('DEBUG_STRIPE_PUB_KEY', localPubKey);
-    setSaveStatus(true);
-    setTimeout(() => setSaveStatus(false), 2000);
-    testConnection();
   };
 
   const testConnection = async () => {
@@ -289,63 +279,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
           <div className="max-w-3xl space-y-12 animate-fade-in">
             <header>
               <h2 className="text-4xl font-bold font-serif">システム設定</h2>
-              <p className="text-gray-500 mt-2">決済・サーバー環境のデバッグ</p>
+              <p className="text-gray-500 mt-2">サーバー環境の状態</p>
             </header>
-            
+
             <div className="bg-luxe-panel p-8 rounded-[2.5rem] border border-white/5 space-y-10">
-              {/* Status Section */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div className="p-6 bg-black/40 rounded-2xl border border-white/5">
-                    <span className="text-[10px] text-gray-500 uppercase font-black">Backend Health</span>
+                    <span className="text-[10px] text-gray-500 uppercase font-black">サーバー状態</span>
                     <div className="flex items-center gap-3 mt-2">
                        <div className={`w-3 h-3 rounded-full ${testStatus === 'online' ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`}></div>
                        <span className="text-xl font-serif uppercase">{testStatus}</span>
                     </div>
                  </div>
                  <div className="p-6 bg-black/40 rounded-2xl border border-white/5">
-                    <span className="text-[10px] text-gray-500 uppercase font-black">Server Secret Key</span>
+                    <span className="text-[10px] text-gray-500 uppercase font-black">決済モード</span>
                     <div className="flex items-center gap-3 mt-2">
-                       <div className={`w-3 h-3 rounded-full ${serverInfo?.stripe_mode !== 'test' || serverInfo?.identity ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                       <div className={`w-3 h-3 rounded-full ${serverInfo?.stripe_mode === 'live' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
                        <span className="text-xl font-serif">{serverInfo?.stripe_mode === 'live' ? 'LIVE MODE' : 'TEST MODE'}</span>
                     </div>
                  </div>
               </div>
-
-              {/* Manual Override Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-3">
-                  <Icons.Card className="w-5 h-5 text-gold-400" />
-                  <h3 className="text-lg font-serif">Stripe 公開鍵の強制設定</h3>
-                </div>
-                <p className="text-xs text-gray-500">Renderの環境変数が反映されない場合、ここに公開鍵(pk_...)を入力して保存してください。このブラウザでの決済時に優先使用されます。</p>
-                <div className="space-y-4">
-                  <input 
-                    type="text" 
-                    placeholder="pk_live_..."
-                    value={localPubKey}
-                    onChange={(e) => setLocalPubKey(e.target.value)}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm font-mono text-gold-200 outline-none focus:border-gold-500"
-                  />
-                  <button 
-                    onClick={saveLocalKeys}
-                    className="px-8 py-3 bg-blue-600 text-white text-xs font-black uppercase rounded-lg shadow-lg hover:bg-blue-500 transition-all flex items-center gap-2"
-                  >
-                    {saveStatus ? <Icons.Verify className="w-4 h-4" /> : null}
-                    {saveStatus ? '保存しました' : '公開鍵を上書き保存'}
-                  </button>
+              <div className="p-6 bg-black/40 rounded-2xl border border-white/5">
+                <span className="text-[10px] text-gray-500 uppercase font-black">サーバー情報</span>
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-500">バージョン</span><span className="text-white">{serverInfo?.identity || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">公開鍵</span><span className="text-white">{serverInfo?.has_pub_key ? '設定済み' : '未設定'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">サーバー時刻</span><span className="text-white">{serverInfo?.server_time ? new Date(serverInfo.server_time).toLocaleString('ja-JP') : '-'}</span></div>
                 </div>
               </div>
-
-              <div className="pt-8 border-t border-white/5">
-                <h4 className="text-[10px] text-gray-600 uppercase font-black mb-4 tracking-widest">Diagnostic Logs</h4>
-                <pre className="bg-black/80 p-6 rounded-xl font-mono text-[10px] text-blue-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">
-                  {JSON.stringify({
-                    server_response: serverInfo,
-                    browser_local_key: localPubKey ? 'SET (starts with ' + localPubKey.substring(0, 7) + ')' : 'NOT SET',
-                    location: window.location.href,
-                    timestamp: new Date().toISOString()
-                  }, null, 2)}
-                </pre>
+              <div className="text-center">
+                <button onClick={testConnection} className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
+                  接続テスト
+                </button>
               </div>
             </div>
           </div>

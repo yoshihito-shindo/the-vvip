@@ -1,5 +1,5 @@
 -- ============================================
--- Luxe & Rose - Initial Database Schema
+-- THE VVIP - Initial Database Schema
 -- ============================================
 
 -- Helper: is_admin function

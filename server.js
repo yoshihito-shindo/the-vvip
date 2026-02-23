@@ -9,6 +9,12 @@ const { Resend } = require('resend');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
+const IS_PRODUCTION = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+// Production-safe logging: suppress verbose logs in production
+function debugLog(...args) {
+  if (!IS_PRODUCTION) console.log(...args);
+}
 
 // Supabase Admin client (server-side only, uses service role key)
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
@@ -381,7 +387,7 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
 app.use(express.json());
 
 app.use((req, res, next) => {
-  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
+  debugLog(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
   next();
 });
 

@@ -65,10 +65,7 @@ const Subscription: React.FC<SubscriptionProps> = ({ currentPlan, myUserId, onSe
     }
   };
 
-  // 公開鍵の決定ロジック（管理者オーバーライド優先）
   const getActivePubKey = () => {
-    const localOverride = localStorage.getItem('DEBUG_STRIPE_PUB_KEY');
-    if (localOverride) return localOverride;
     return config?.publishableKey;
   };
 
