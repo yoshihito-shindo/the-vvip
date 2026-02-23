@@ -40,6 +40,69 @@ Object.entries(STRIPE_PRICES).forEach(([plan, priceId]) => {
 });
 
 // ============================================
+// Helper: Send notification email
+// ============================================
+async function sendNotificationEmail(userId, subject, htmlBuilder) {
+  if (!resend || !supabaseAdmin) return;
+  try {
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const email = userData?.user?.email;
+    if (!email) return;
+
+    const { data: profileData } = await supabaseAdmin
+      .from('profiles')
+      .select('name')
+      .eq('id', userId)
+      .single();
+    const name = profileData?.name || 'お客様';
+
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: email,
+      subject,
+      html: htmlBuilder(name),
+    });
+    console.log(`[EMAIL] Sent "${subject}" to ${email}`);
+  } catch (err) {
+    console.error('[EMAIL] Failed to send notification:', err.message);
+  }
+}
+
+function buildEmailWrapper(title, bodyContent) {
+  const appUrl = process.env.RENDER_EXTERNAL_URL || 'https://the-vvip.onrender.com';
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#0a0a0a;font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0a;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background-color:#111;border:1px solid #222;border-radius:16px;overflow:hidden;">
+        <tr><td style="background:linear-gradient(135deg,#1a1a1a,#0d0d0d);padding:48px 40px;text-align:center;border-bottom:1px solid #B8860B;">
+          <h1 style="margin:0;font-size:28px;font-weight:300;letter-spacing:8px;color:#D4AF37;font-family:Georgia,serif;">THE VVIP</h1>
+          <p style="margin:8px 0 0;font-size:10px;letter-spacing:4px;color:#666;text-transform:uppercase;">Exclusive Members Club</p>
+        </td></tr>
+        <tr><td style="padding:48px 40px;">
+          ${bodyContent}
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td align="center" style="padding:24px 0;">
+              <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#D4AF37,#B8860B);color:#000;text-decoration:none;padding:16px 48px;border-radius:50px;font-size:13px;font-weight:700;letter-spacing:3px;text-transform:uppercase;">アプリを開く</a>
+            </td></tr>
+          </table>
+          <div style="margin-top:40px;padding-top:32px;border-top:1px solid #222;">
+            <p style="color:#555;font-size:11px;line-height:1.8;margin:0;">ご不明な点がございましたら、お気軽にお問い合わせください。<br>THE VVIP コンシェルジュチーム</p>
+          </div>
+        </td></tr>
+        <tr><td style="background-color:#0a0a0a;padding:24px 40px;text-align:center;border-top:1px solid #1a1a1a;">
+          <p style="color:#333;font-size:10px;letter-spacing:2px;margin:0;">&copy; THE VVIP. All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+// ============================================
 // Stripe Webhook (must be before express.json())
 // ============================================
 app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -111,6 +174,19 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
           }).eq('id', profile.id);
 
           console.log(`[WEBHOOK] Downgrade executed: ${profile.id} → ${profile.pending_downgrade}`);
+
+          // Send downgrade notification email
+          const downgradePlan = profile.pending_downgrade;
+          sendNotificationEmail(profile.id, '【THE VVIP】プラン変更が完了しました', (name) =>
+            buildEmailWrapper('プラン変更完了', `
+              <p style="color:#999;font-size:14px;margin:0 0 24px;line-height:1.8;">${name} 様</p>
+              <h2 style="color:#D4AF37;font-size:22px;font-weight:400;margin:0 0 24px;font-family:Georgia,serif;">プラン変更が完了しました</h2>
+              <p style="color:#999;font-size:14px;line-height:2;margin:0 0 32px;">
+                ご利用プランが <strong style="color:#fff;">${downgradePlan}</strong> プランに変更されました。<br>
+                引き続き THE VVIP をお楽しみください。
+              </p>
+            `)
+          );
         } else {
           // Extend subscription period
           const now = new Date();
@@ -123,6 +199,20 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
           }).eq('id', profile.id);
 
           console.log(`[WEBHOOK] Subscription renewed: ${profile.id}, until ${threeMonthsLater.toISOString()}`);
+
+          // Send renewal notification email
+          const untilDate = threeMonthsLater.toLocaleDateString('ja-JP');
+          sendNotificationEmail(profile.id, '【THE VVIP】お支払いが完了しました', (name) =>
+            buildEmailWrapper('お支払い完了', `
+              <p style="color:#999;font-size:14px;margin:0 0 24px;line-height:1.8;">${name} 様</p>
+              <h2 style="color:#D4AF37;font-size:22px;font-weight:400;margin:0 0 24px;font-family:Georgia,serif;">お支払いが完了しました</h2>
+              <p style="color:#999;font-size:14px;line-height:2;margin:0 0 32px;">
+                今月のサブスクリプション料金のお支払いが正常に処理されました。<br>
+                次回更新日: <strong style="color:#fff;">${untilDate}</strong><br><br>
+                引き続き THE VVIP をお楽しみください。
+              </p>
+            `)
+          );
         }
         break;
       }
@@ -137,6 +227,28 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
         }).eq('stripe_subscription_id', subscriptionId);
 
         console.log(`[WEBHOOK] Payment failed for subscription: ${subscriptionId}`);
+
+        // Send payment failed email
+        const { data: failedProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('stripe_subscription_id', subscriptionId)
+          .single();
+
+        if (failedProfile) {
+          sendNotificationEmail(failedProfile.id, '【THE VVIP】お支払いに失敗しました', (name) =>
+            buildEmailWrapper('お支払い失敗', `
+              <p style="color:#999;font-size:14px;margin:0 0 24px;line-height:1.8;">${name} 様</p>
+              <h2 style="color:#e74c3c;font-size:22px;font-weight:400;margin:0 0 24px;font-family:Georgia,serif;">お支払いに失敗しました</h2>
+              <p style="color:#999;font-size:14px;line-height:2;margin:0 0 32px;">
+                サブスクリプション料金のお支払いが正常に処理できませんでした。<br><br>
+                お手数ですが、クレジットカード情報をご確認の上、<br>
+                お支払い方法を更新してください。<br><br>
+                <span style="color:#e74c3c;">お支払いが確認できない場合、サービスが制限される場合がございます。</span>
+              </p>
+            `)
+          );
+        }
         break;
       }
 
@@ -154,6 +266,23 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
         }).eq('stripe_subscription_id', subscription.id);
 
         console.log(`[WEBHOOK] Subscription deleted: ${subscription.id}`);
+
+        // Send cancellation email (find user by metadata)
+        const cancelUserId = subscription.metadata?.userId;
+        if (cancelUserId) {
+          sendNotificationEmail(cancelUserId, '【THE VVIP】サブスクリプションが解約されました', (name) =>
+            buildEmailWrapper('解約完了', `
+              <p style="color:#999;font-size:14px;margin:0 0 24px;line-height:1.8;">${name} 様</p>
+              <h2 style="color:#fff;font-size:22px;font-weight:400;margin:0 0 24px;font-family:Georgia,serif;">サブスクリプションが解約されました</h2>
+              <p style="color:#999;font-size:14px;line-height:2;margin:0 0 32px;">
+                サブスクリプションの解約が完了しました。<br>
+                これまでのご利用、誠にありがとうございました。<br><br>
+                いつでも再登録いただけますので、<br>
+                またのご利用を心よりお待ちしております。
+              </p>
+            `)
+          );
+        }
         break;
       }
     }
