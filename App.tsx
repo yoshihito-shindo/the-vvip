@@ -99,8 +99,8 @@ const AppContent: React.FC = () => {
 
   if (!meProfile) return null;
 
-  // If not verified yet, show verification flow
-  if (!meProfile.isVerified) {
+  // If not verified yet, show verification flow (admins skip)
+  if (!meProfile.isVerified && !isAdmin) {
     const alreadySubmitted = !!meProfile.verificationImageUrl;
     return <Verification
       alreadySubmitted={alreadySubmitted}
