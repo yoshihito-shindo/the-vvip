@@ -12,6 +12,7 @@ export const authService = {
     const { error: profileError } = await supabase.from('profiles').insert({
       id: data.user.id,
       name: profileData.name || '',
+      phone: profileData.phone || '',
       age: profileData.age || 25,
       gender: profileData.gender || 'Male',
       occupation: profileData.occupation || '',
@@ -23,6 +24,7 @@ export const authService = {
       bio: profileData.bio || '',
       image_urls: profileData.imageUrls || ['https://picsum.photos/seed/default/400/400'],
       tags: profileData.tags || [],
+      verification_image_url: profileData.verificationImageUrl || null,
       is_verified: false,
       status: 'Pending',
       subscription: 'Free',

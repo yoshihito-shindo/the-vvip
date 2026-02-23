@@ -87,6 +87,16 @@ const EditProfile: React.FC<EditProfileProps> = ({ user, onSave }) => {
             />
           </div>
           <div className="space-y-2">
+            <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">電話番号</label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({...formData, phone: e.target.value})}
+              placeholder="090-1234-5678"
+              className="w-full bg-luxe-panel/50 border border-white/5 rounded-xl p-4 text-white text-sm outline-none focus:border-gold-500/50 transition-all"
+            />
+          </div>
+          <div className="space-y-2">
             <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">年齢</label>
             <input
               type="number"

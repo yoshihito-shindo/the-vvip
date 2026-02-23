@@ -21,6 +21,7 @@ export enum SubscriptionPlan {
 export interface UserProfile {
   id: string;
   name: string;
+  phone: string;
   age: number;
   gender: Gender;
   occupation: string;
@@ -81,6 +82,7 @@ export function dbRowToProfile(row: any): UserProfile {
   return {
     id: row.id,
     name: row.name || '',
+    phone: row.phone || '',
     age: row.age || 25,
     gender: row.gender as Gender || Gender.Male,
     occupation: row.occupation || '',
@@ -107,6 +109,7 @@ export function dbRowToProfile(row: any): UserProfile {
 export function profileToDbRow(profile: Partial<UserProfile>): Record<string, any> {
   const row: Record<string, any> = {};
   if (profile.name !== undefined) row.name = profile.name;
+  if (profile.phone !== undefined) row.phone = profile.phone;
   if (profile.age !== undefined) row.age = profile.age;
   if (profile.gender !== undefined) row.gender = profile.gender;
   if (profile.occupation !== undefined) row.occupation = profile.occupation;
