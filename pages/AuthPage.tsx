@@ -111,7 +111,18 @@ const AuthPage: React.FC = () => {
         setViewState('REGISTERED');
       }
     } catch (err: any) {
-      setError(err.message || '認証エラーが発生しました');
+      const msg = err.message || '';
+      if (msg.includes('User already registered')) {
+        setError('このメールアドレスは既に登録されています。ログインしてください。');
+      } else if (msg.includes('Invalid login credentials')) {
+        setError('メールアドレスまたはパスワードが正しくありません。');
+      } else if (msg.includes('Email not confirmed')) {
+        setError('メールアドレスの確認が完了していません。確認メールをご確認ください。');
+      } else if (msg.includes('Password should be at least')) {
+        setError('パスワードは6文字以上で入力してください。');
+      } else {
+        setError(msg || '認証エラーが発生しました');
+      }
     } finally {
       setLoading(false);
     }
