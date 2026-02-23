@@ -1,0 +1,44 @@
+
+services:
+  - type: web
+    name: luxe-rose-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install --legacy-peer-deps && npm run build
+    startCommand: node server.js
+    envVars:
+      - key: STRIPE_SECRET_KEY
+        sync: false
+        description: "Stripe Secret Key (sk_...)"
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+        description: "Stripe Publishable Key (pk_...)"
+      - key: API_KEY
+        sync: false
+        description: "Google Gemini API Key"
+      - key: VITE_SUPABASE_URL
+        sync: false
+        description: "Supabase Project URL"
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+        description: "Supabase Anon Key"
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+        description: "Supabase Service Role Key (server-side only)"
+      - key: STRIPE_PRICE_GOLD
+        sync: false
+        description: "Stripe Price ID for Gold plan"
+      - key: STRIPE_PRICE_PLATINUM
+        sync: false
+        description: "Stripe Price ID for Platinum plan"
+      - key: STRIPE_PRICE_VVIP
+        sync: false
+        description: "Stripe Price ID for VVIP plan"
+      - key: RESEND_API_KEY
+        sync: false
+        description: "Resend API Key for sending emails"
+      - key: EMAIL_FROM
+        sync: false
+        description: "Sender email address (e.g., THE VVIP <concierge@thevvip.com>)"
+      - key: NODE_VERSION
+        value: 20.0.0

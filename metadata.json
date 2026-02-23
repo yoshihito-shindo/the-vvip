@@ -1,0 +1,7 @@
+{
+  "name": "THE VVIP",
+  "description": "An exclusive, invitation-only dating application for the elite. Modeled after premium matching services, featuring AI-driven profile curation and high-status matching.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
