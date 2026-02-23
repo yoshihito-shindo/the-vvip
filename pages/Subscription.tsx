@@ -167,7 +167,7 @@ const Subscription: React.FC<SubscriptionProps> = ({ currentPlan, myUserId, onSe
       <div className="animate-fade-in">
         <header className="max-w-5xl mx-auto mb-16 text-center pt-10">
           <Icons.Award className="w-12 h-12 text-gold-400 mx-auto mb-4" />
-          <h1 className="text-4xl font-serif text-gold-100 mb-2 uppercase tracking-tighter">Memberships</h1>
+          <h1 className="text-4xl font-serif text-gold-100 mb-2 uppercase tracking-tighter">メンバーシップ</h1>
         </header>
 
         {paymentStep === 'CONFIRM' && (
@@ -212,7 +212,7 @@ const Subscription: React.FC<SubscriptionProps> = ({ currentPlan, myUserId, onSe
                {paymentStep === 'PROCESSING' && (
                  <div className="py-10 text-center space-y-6">
                     <div className="w-16 h-16 border-4 border-gold-500/20 border-t-gold-500 rounded-full animate-spin mx-auto"></div>
-                    <p className="text-gold-200 animate-pulse font-serif">Processing...</p>
+                    <p className="text-gold-200 animate-pulse font-serif">決済処理中...</p>
                  </div>
                )}
 

@@ -176,12 +176,12 @@ const Verification: React.FC<VerificationProps> = ({ onComplete, alreadySubmitte
             <h2 className="text-2xl font-serif text-center text-white">送信内容の確認</h2>
             <div className="relative aspect-[3/2] w-full bg-black rounded-2xl overflow-hidden border border-gold-500/50 shadow-2xl">
               {capturedImage && (
-                <img src={capturedImage} alt="Document Preview" className="w-full h-full object-cover" />
+                <img src={capturedImage} alt="書類プレビュー" className="w-full h-full object-cover" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
               <div className="absolute bottom-4 left-4 flex items-center gap-2">
                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                 <span className="text-[10px] text-white font-bold uppercase tracking-widest">Ready to Verify</span>
+                 <span className="text-[10px] text-white font-bold uppercase tracking-widest">送信準備完了</span>
               </div>
             </div>
 

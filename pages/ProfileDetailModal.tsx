@@ -57,13 +57,13 @@ const ProfileDetailModal: React.FC<ModalProps> = ({ profile, isMatched = false, 
                 <h2 className="text-5xl font-serif font-bold text-white flex items-center gap-4">
                   {profile.name}
                   {profile.isVerified && <Icons.Verify className="w-8 h-8 text-gold-400" />}
-                  {isMatched && <span className="text-xs bg-gold-500/20 text-gold-400 border border-gold-500/30 px-3 py-1 rounded-full uppercase tracking-tighter font-black">Matched</span>}
+                  {isMatched && <span className="text-xs bg-gold-500/20 text-gold-400 border border-gold-500/30 px-3 py-1 rounded-full uppercase tracking-tighter font-black">マッチ済</span>}
                 </h2>
                 <p className="text-2xl text-gold-200 font-medium tracking-wide">{profile.occupation}</p>
               </div>
               <div className="text-right">
                 <span className="block text-5xl font-light text-gray-300 leading-none">{profile.age}</span>
-                <span className="text-[10px] uppercase text-gray-500 tracking-[0.3em] font-black mt-2 inline-block">Years Old</span>
+                <span className="text-[10px] uppercase text-gray-500 tracking-[0.3em] font-black mt-2 inline-block">歳</span>
               </div>
             </div>
 

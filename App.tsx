@@ -33,7 +33,7 @@ const GlobalMatchOverlay: React.FC<{
       <div className="relative z-10 text-center space-y-8 px-8 w-full max-w-md">
         <header className="space-y-3 animate-bounce-slow">
           <Icons.Sparkles className="w-16 h-16 mx-auto text-gold-400" />
-          <h2 className="text-6xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-b from-gold-100 to-gold-500 italic">MATCHED</h2>
+          <h2 className="text-6xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-b from-gold-100 to-gold-500 italic">マッチ成立</h2>
         </header>
         <div className="flex items-center justify-center gap-6 py-6">
           <img src={me.imageUrls[0]} className="w-24 h-24 rounded-full border-2 border-gold-500 shadow-2xl" alt="Me" />
@@ -202,7 +202,7 @@ const AppRouter: React.FC = () => {
       <div className="min-h-screen bg-luxe-black flex items-center justify-center">
         <div className="text-center space-y-4">
           <Icons.Diamond className="w-16 h-16 text-gold-400 mx-auto animate-pulse" />
-          <p className="text-gold-200 font-serif tracking-widest uppercase animate-pulse">Loading...</p>
+          <p className="text-gold-200 font-serif tracking-widest uppercase animate-pulse">読み込み中...</p>
         </div>
       </div>
     );

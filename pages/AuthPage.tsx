@@ -6,10 +6,12 @@ import { MASTER_DATA } from '../services/geminiService';
 import { supabase } from '../services/supabaseClient';
 
 type Mode = 'LOGIN' | 'REGISTER';
+type ViewState = 'FORM' | 'REGISTERED';
 
 const AuthPage: React.FC = () => {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<Mode>('LOGIN');
+  const [viewState, setViewState] = useState<ViewState>('FORM');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -98,6 +100,15 @@ const AuthPage: React.FC = () => {
           subscription: 'Free',
         });
         if (profileError) throw profileError;
+
+        // If session exists (email confirmation disabled), auto-login
+        if (authData.session) {
+          await signIn(email, password);
+          return;
+        }
+
+        // Email confirmation required — show success screen
+        setViewState('REGISTERED');
       }
     } catch (err: any) {
       setError(err.message || '認証エラーが発生しました');
@@ -109,6 +120,46 @@ const AuthPage: React.FC = () => {
   const inputClasses = "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-gold-500/50 transition-all";
   const labelClasses = "text-[9px] text-gray-500 font-bold uppercase tracking-widest block mb-1";
 
+  if (viewState === 'REGISTERED') {
+    return (
+      <div className="min-h-screen bg-luxe-black flex items-center justify-center p-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gold-600/5 blur-[150px] rounded-full pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gold-600/5 blur-[150px] rounded-full pointer-events-none"></div>
+        <div className="relative z-10 w-full max-w-md animate-fade-in text-center space-y-8">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center border border-green-500/30">
+              <Icons.Send className="w-10 h-10 text-green-400" />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <h2 className="text-3xl font-serif text-white">登録が完了しました</h2>
+            <p className="text-gray-400 font-light leading-relaxed">
+              ご登録いただいたメールアドレス宛に<br/>
+              確認メールを送信しました。<br/>
+              メール内のリンクをクリックして<br/>
+              アカウントを有効化してください。
+            </p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-3">
+            <p className="text-[10px] text-gold-400 uppercase font-black tracking-widest">送信先</p>
+            <p className="text-white font-medium">{email}</p>
+          </div>
+          <div className="space-y-4 pt-4">
+            <p className="text-[10px] text-gray-600">
+              メールが届かない場合は、迷惑メールフォルダをご確認ください。
+            </p>
+            <button
+              onClick={() => { setViewState('FORM'); setMode('LOGIN'); }}
+              className="w-full py-4 bg-gradient-to-r from-gold-500 to-gold-600 rounded-full text-black font-bold uppercase tracking-widest shadow-lg shadow-gold-500/20 active:scale-95 transition-all"
+            >
+              ログイン画面へ
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-luxe-black flex items-center justify-center p-6 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gold-600/5 blur-[150px] rounded-full pointer-events-none"></div>
@@ -119,7 +170,7 @@ const AuthPage: React.FC = () => {
           <Icons.Diamond className="w-14 h-14 text-gold-400 mx-auto mb-4" />
           <h1 className="text-4xl font-serif text-white">THE VVIP</h1>
           <p className="text-[10px] text-gold-500 uppercase tracking-[0.4em] font-bold mt-2">
-            {mode === 'LOGIN' ? 'Welcome Back' : 'Join the Club'}
+            {mode === 'LOGIN' ? 'おかえりなさい' : '新規会員登録'}
           </p>
         </div>
 

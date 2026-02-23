@@ -111,7 +111,7 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
             </div>
             <div className="relative z-10 space-y-6">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Membership Status</span>
+                <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">会員ステータス</span>
                 <Icons.Sparkles className="w-4 h-4 text-gold-400" />
               </div>
               <div>
@@ -247,10 +247,10 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
 
           <div className="pt-12 border-t border-white/5 flex items-center justify-between">
             {isAdmin && (
-              <button onClick={onAdminMode} className="text-[9px] text-gray-700 uppercase font-black hover:text-gold-500 transition-colors">System Admin</button>
+              <button onClick={onAdminMode} className="text-[9px] text-gray-700 uppercase font-black hover:text-gold-500 transition-colors">管理画面</button>
             )}
             {!isAdmin && <div />}
-            <button onClick={handleLogout} className="text-[9px] text-red-900 uppercase font-black hover:text-red-500 transition-colors">Logout Account</button>
+            <button onClick={handleLogout} className="text-[9px] text-red-900 uppercase font-black hover:text-red-500 transition-colors">ログアウト</button>
           </div>
         </div>
       </div>

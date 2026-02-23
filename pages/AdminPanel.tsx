@@ -96,7 +96,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
             <Icons.Settings className="w-4 h-4" /> システム設定
           </button>
         </nav>
-        <button onClick={onExit} className="text-gray-600 hover:text-white text-[10px] font-black uppercase tracking-[0.3em] transition-colors mt-auto">Logout System</button>
+        <button onClick={onExit} className="text-gray-600 hover:text-white text-[10px] font-black uppercase tracking-[0.3em] transition-colors mt-auto">システム終了</button>
       </aside>
 
       <main className="flex-1 p-8 md:p-12 overflow-y-auto bg-[#0a0a0a]">
