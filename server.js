@@ -450,6 +450,69 @@ app.post('/api/cancel-subscription', async (req, res) => {
 });
 
 // ============================================
+// Admin: Billing dashboard data
+// ============================================
+app.get('/api/admin/billing', async (req, res) => {
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Supabase is not configured on server' });
+  }
+
+  try {
+    // 1. Subscriber counts from DB
+    const { data: profiles } = await supabaseAdmin
+      .from('profiles')
+      .select('subscription')
+      .neq('subscription', 'Free')
+      .eq('is_ai_generated', false);
+
+    const subscribers = { Gold: 0, Platinum: 0, VVIP: 0 };
+    (profiles || []).forEach(p => {
+      if (subscribers[p.subscription] !== undefined) subscribers[p.subscription]++;
+    });
+
+    // 2. Recent charges from Stripe
+    let recentPayments = [];
+    let totalRevenue = 0;
+    let monthlyRevenue = 0;
+
+    if (STRIPE_KEY !== 'sk_test_mock') {
+      const now = new Date();
+      const monthStart = Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
+
+      // Recent 20 successful charges
+      const charges = await stripe.charges.list({ limit: 20, status: 'succeeded' });
+      recentPayments = charges.data.map(c => ({
+        id: c.id,
+        amount: c.amount,
+        currency: c.currency,
+        created: c.created,
+        description: c.description || '',
+        customer: c.customer,
+      }));
+
+      // Monthly revenue
+      const monthCharges = await stripe.charges.list({ created: { gte: monthStart }, status: 'succeeded', limit: 100 });
+      monthlyRevenue = monthCharges.data.reduce((sum, c) => sum + c.amount, 0);
+
+      // Total revenue (balance transactions)
+      const balance = await stripe.balance.retrieve();
+      totalRevenue = balance.available.reduce((sum, b) => sum + b.amount, 0) + balance.pending.reduce((sum, b) => sum + b.amount, 0);
+    }
+
+    res.json({
+      subscribers,
+      totalSubscribers: Object.values(subscribers).reduce((a, b) => a + b, 0),
+      recentPayments,
+      monthlyRevenue,
+      totalRevenue,
+    });
+  } catch (error) {
+    console.error('[ADMIN BILLING ERROR]:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
 // Account: Delete account
 // ============================================
 app.post('/api/delete-account', async (req, res) => {

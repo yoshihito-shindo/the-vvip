@@ -25,6 +25,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'online' | 'error'>('idle');
   const [serverInfo, setServerInfo] = useState<any>(null);
 
+  // 売上データ
+  const [billingData, setBillingData] = useState<any>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+
   const pendingUsers = allUsers
     .filter(u => u.status === AccountStatus.Pending || u.status === AccountStatus.Approved)
     .filter(u => !u.is_ai_generated)
@@ -92,9 +96,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
     }
   };
 
+  const fetchBilling = async () => {
+    setBillingLoading(true);
+    try {
+      const res = await fetch('/api/admin/billing');
+      if (res.ok) {
+        const data = await res.json();
+        setBillingData(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
   useEffect(() => {
     testConnection();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'billing' && !billingData) {
+      fetchBilling();
+    }
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col md:flex-row font-sans">
@@ -193,6 +218,69 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ allUsers, onUpdateUser, onExit 
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'billing' && (
+          <div className="animate-fade-in space-y-8">
+            <header className="flex items-center justify-between">
+              <h2 className="text-4xl font-bold font-serif">売上管理</h2>
+              <button onClick={fetchBilling} disabled={billingLoading} className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
+                {billingLoading ? '読み込み中...' : '更新'}
+              </button>
+            </header>
+
+            {billingLoading && !billingData ? (
+              <div className="text-center py-20 text-gray-500 animate-pulse">データを読み込み中...</div>
+            ) : billingData ? (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-luxe-panel p-6 rounded-2xl border border-white/5">
+                    <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">有料会員数</span>
+                    <div className="text-4xl font-serif text-white mt-2">{billingData.totalSubscribers}</div>
+                    <div className="flex gap-3 mt-3">
+                      <span className="text-[9px] text-gold-400 font-bold">Gold: {billingData.subscribers.Gold}</span>
+                      <span className="text-[9px] text-blue-400 font-bold">Platinum: {billingData.subscribers.Platinum}</span>
+                      <span className="text-[9px] text-purple-400 font-bold">VVIP: {billingData.subscribers.VVIP}</span>
+                    </div>
+                  </div>
+                  <div className="bg-luxe-panel p-6 rounded-2xl border border-white/5">
+                    <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">今月の売上</span>
+                    <div className="text-4xl font-serif text-green-400 mt-2">¥{(billingData.monthlyRevenue / 100).toLocaleString()}</div>
+                  </div>
+                  <div className="bg-luxe-panel p-6 rounded-2xl border border-white/5">
+                    <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">残高合計</span>
+                    <div className="text-4xl font-serif text-gold-400 mt-2">¥{(billingData.totalRevenue / 100).toLocaleString()}</div>
+                  </div>
+                </div>
+
+                {/* Recent Payments */}
+                <div className="bg-luxe-panel p-8 rounded-[2.5rem] border border-white/5">
+                  <h3 className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-6">直近の決済</h3>
+                  {billingData.recentPayments.length === 0 ? (
+                    <p className="text-gray-600 text-sm text-center py-8">決済履歴がありません</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {billingData.recentPayments.map((p: any) => (
+                        <div key={p.id} className="flex items-center justify-between p-4 bg-black/30 rounded-xl border border-white/5">
+                          <div>
+                            <p className="text-sm text-white font-medium">¥{(p.amount / 100).toLocaleString()}</p>
+                            <p className="text-[10px] text-gray-500 mt-1">{p.description || p.id.substring(0, 20)}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[9px] bg-green-500/20 text-green-400 px-2 py-1 rounded-full font-bold">成功</span>
+                            <p className="text-[10px] text-gray-600 mt-1">{new Date(p.created * 1000).toLocaleString('ja-JP')}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-20 text-gray-600">データの取得に失敗しました</div>
+            )}
           </div>
         )}
 
