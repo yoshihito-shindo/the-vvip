@@ -450,6 +450,53 @@ app.post('/api/cancel-subscription', async (req, res) => {
 });
 
 // ============================================
+// Account: Delete account
+// ============================================
+app.post('/api/delete-account', async (req, res) => {
+  const { userId } = req.body;
+
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Supabase is not configured on server' });
+  }
+
+  try {
+    // 1. Get profile to check for Stripe subscription
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('stripe_subscription_id, stripe_customer_id')
+      .eq('id', userId)
+      .single();
+
+    // 2. Cancel Stripe subscription if exists
+    if (profile?.stripe_subscription_id && STRIPE_KEY !== 'sk_test_mock') {
+      try {
+        await stripe.subscriptions.cancel(profile.stripe_subscription_id);
+        console.log(`[DELETE] Cancelled Stripe subscription: ${profile.stripe_subscription_id}`);
+      } catch (stripeErr) {
+        console.warn(`[DELETE] Stripe cancel failed (may already be cancelled):`, stripeErr.message);
+      }
+    }
+
+    // 3. Delete profile from DB
+    const { error: deleteError } = await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+    if (deleteError) throw deleteError;
+
+    // 4. Delete auth user
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (authError) throw authError;
+
+    console.log(`[DELETE] Account deleted: ${userId}`);
+    res.json({ success: true, message: 'アカウントを削除しました。' });
+  } catch (error) {
+    console.error('[DELETE ACCOUNT ERROR]:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
 // Admin: Get signed URL for verification image
 // ============================================
 app.get('/api/admin/verification-image/:userId', async (req, res) => {

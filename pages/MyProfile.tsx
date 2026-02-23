@@ -25,6 +25,8 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelMessage, setCancelMessage] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     if (user.subscription !== SubscriptionPlan.Free) {
@@ -73,6 +75,29 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
       await signOut();
     } catch (err) {
       console.error('Logout error:', err);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    try {
+      const res = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || '削除に失敗しました。');
+      } else {
+        alert('アカウントを削除しました。');
+        await signOut();
+      }
+    } catch {
+      alert('通信エラーが発生しました。');
+    } finally {
+      setDeleteLoading(false);
+      setDeleteConfirm(false);
     }
   };
 
@@ -270,6 +295,33 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, onAdminMode }) => {
               )}
               {!isAdmin && <div />}
               <button onClick={handleLogout} className="text-[9px] text-red-900 uppercase font-black hover:text-red-500 transition-colors">ログアウト</button>
+            </div>
+            <div className="text-center pt-4">
+              {!deleteConfirm ? (
+                <button onClick={() => setDeleteConfirm(true)} className="text-[9px] text-gray-700 hover:text-red-500 transition-colors">
+                  アカウントを削除する
+                </button>
+              ) : (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 space-y-3">
+                  <p className="text-[11px] text-red-400 font-bold">アカウントを完全に削除しますか？</p>
+                  <p className="text-[9px] text-gray-500">この操作は取り消せません。全てのデータが削除されます。</p>
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      onClick={handleDeleteAccount}
+                      disabled={deleteLoading}
+                      className="px-6 py-2 bg-red-600 text-white rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all"
+                    >
+                      {deleteLoading ? '削除中...' : '削除する'}
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm(false)}
+                      className="px-6 py-2 bg-white/5 text-gray-400 rounded-xl text-[9px] font-black uppercase"
+                    >
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
