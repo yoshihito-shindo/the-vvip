@@ -50,6 +50,12 @@ const GlobalMatchOverlay: React.FC<{
   );
 };
 
+const AdminLoader: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAdmin } = useAuth();
+  if (!isAdmin) return <Navigate to="/profile" replace />;
+  return <>{children}</>;
+};
+
 const AppContent: React.FC = () => {
   const { profile: meProfile, setProfile, isAdmin, refreshProfile } = useAuth();
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
@@ -61,6 +67,13 @@ const AppContent: React.FC = () => {
   const [justMatchedUser, setJustMatchedUser] = useState<UserProfile | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
   const [adminUsers, setAdminUsers] = useState<UserProfile[]>([]);
+
+  // Load admin users when admin accesses /admin route or toggles admin mode
+  useEffect(() => {
+    if (isAdmin && (window.location.hash === '#/admin' || showAdmin) && adminUsers.length === 0) {
+      profileService.getAllProfiles().then(setAdminUsers).catch(() => {});
+    }
+  }, [isAdmin, showAdmin]);
 
   useEffect(() => {
     if (!meProfile) return;
@@ -110,9 +123,8 @@ const AppContent: React.FC = () => {
     />;
   }
 
-  // Admin panel
-  if (showAdmin && isAdmin) {
-    return <AdminPanel
+  const adminPanel = isAdmin ? (
+    <AdminPanel
       allUsers={adminUsers}
       onUpdateUser={async (updatedUser) => {
         if (updatedUser.status === AccountStatus.Gold || updatedUser.status === AccountStatus.Black) {
@@ -123,8 +135,13 @@ const AppContent: React.FC = () => {
         const refreshed = await profileService.getAllProfiles();
         setAdminUsers(refreshed);
       }}
-      onExit={() => setShowAdmin(false)}
-    />;
+      onExit={() => { setShowAdmin(false); window.location.hash = '#/profile'; }}
+    />
+  ) : <Navigate to="/profile" replace />;
+
+  // Admin panel (legacy showAdmin toggle)
+  if (showAdmin && isAdmin) {
+    return adminPanel;
   }
 
   const targetGenderUsers = allUsers.filter(u => {
@@ -184,6 +201,7 @@ const AppContent: React.FC = () => {
           setAdminUsers(all);
           setShowAdmin(true);
         }} />} />
+        <Route path="/admin" element={<AdminLoader>{adminPanel}</AdminLoader>} />
         <Route path="/profile/edit" element={<EditProfile user={meProfile} onSave={handleSetMeProfile} />} />
         <Route path="/subscription" element={<Subscription currentPlan={meProfile.subscription} myUserId={meProfile.id} onSelectPlan={(plan) => handleSetMeProfile(prev => ({...prev, subscription: plan}))} />} />
       </Routes>
